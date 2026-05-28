@@ -1,0 +1,107 @@
+name: Build dataverse-backend binaries
+
+# This workflow builds rclone binaries from the `binaries-build` branch
+# (which tracks `dataverse-backend` + this file) and publishes them as a
+# rolling pre-release tagged `dataverse-backend-latest`. It is not part
+# of upstream rclone's CI — it exists only on this fork's
+# `binaries-build` branch so the open PR against rclone/rclone
+# (https://github.com/rclone/rclone/pull/9467) stays free of fork-only
+# CI noise.
+
+on:
+  push:
+    branches: [binaries-build]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-amd64
+            ext: ""
+          - os: macos-13
+            target: darwin-amd64
+            ext: ""
+          - os: macos-latest
+            target: darwin-arm64
+            ext: ""
+          - os: windows-latest
+            target: windows-amd64
+            ext: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Build rclone (${{ matrix.target }})
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -trimpath -o "rclone-${{ matrix.target }}${{ matrix.ext }}" .
+          ls -la "rclone-${{ matrix.target }}${{ matrix.ext }}"
+      - name: Smoke test
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          "./rclone-${{ matrix.target }}${{ matrix.ext }}" version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rclone-${{ matrix.target }}
+          path: rclone-${{ matrix.target }}${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Show artifacts
+        run: ls -la artifacts/
+      - name: Publish rolling pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dataverse-backend-latest
+          name: "Dataverse backend — latest build"
+          prerelease: true
+          body: |
+            Pre-built rclone binaries from this fork's `dataverse-backend` branch. Includes the experimental Dataverse backend pending upstream merge of [rclone/rclone#9467](https://github.com/rclone/rclone/pull/9467); once that lands, the standard upstream `rclone` packages will include this backend and these binaries become unnecessary.
+
+            **Platforms:**
+
+            | File | Platform |
+            | --- | --- |
+            | `rclone-linux-amd64` | Linux x86_64 |
+            | `rclone-darwin-amd64` | macOS Intel |
+            | `rclone-darwin-arm64` | macOS Apple Silicon |
+            | `rclone-windows-amd64.exe` | Windows x86_64 |
+
+            **FUSE driver prerequisites for `rclone mount`:**
+
+            - macOS: [macFUSE](https://osxfuse.github.io), or use `rclone nfsmount` to skip the kext entirely.
+            - Windows: [WinFsp](https://winfsp.dev).
+            - Linux: `fuse3` package.
+
+            **Quickstart (macOS Apple Silicon example):**
+
+            ```bash
+            chmod +x rclone-darwin-arm64
+            ./rclone-darwin-arm64 config create dv dataverse \
+                host=https://demo.dataverse.org \
+                dataset_pid=doi:10.70122/FK2/PPIAXE
+            mkdir -p ~/dv-mount
+            ./rclone-darwin-arm64 mount --read-only dv: ~/dv-mount
+            ```
+
+            Full backend documentation: [backend/dataverse/README.md](https://github.com/ErykKul/rclone/blob/dataverse-backend/backend/dataverse/README.md). Recipe wrapping this backend with Docker + Globus: [gdcc/dataverse-recipes#35](https://github.com/gdcc/dataverse-recipes/pull/35).
+          files: artifacts/*
