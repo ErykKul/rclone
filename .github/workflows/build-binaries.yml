@@ -63,7 +63,10 @@ jobs:
           go build -trimpath -o "rclone-${{ matrix.target }}${{ matrix.ext }}" .
           ls -la "rclone-${{ matrix.target }}${{ matrix.ext }}"
       - name: Smoke test
-        if: matrix.os != 'windows-latest'
+        # Only run on native targets — can't exec a cross-compiled binary
+        # on this runner. Also skip Windows where the bash quoting around
+        # .exe paths is annoying.
+        if: matrix.os != 'windows-latest' && matrix.target != 'linux-arm64'
         shell: bash
         run: |
           "./rclone-${{ matrix.target }}${{ matrix.ext }}" version
