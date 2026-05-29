@@ -124,3 +124,22 @@ jobs:
 
             Full backend documentation: [backend/dataverse/README.md](https://github.com/ErykKul/rclone/blob/dataverse-backend/backend/dataverse/README.md). Recipe wrapping this backend with Docker + Globus: [gdcc/dataverse-recipes#35](https://github.com/gdcc/dataverse-recipes/pull/35).
           files: artifacts/*
+
+      - name: Rebuild the dataverse-mount Docker image
+        # The dataverse-mount image bakes this binary at build time, so it
+        # must rebuild whenever a new binary is published here — otherwise
+        # the published image (and the recipe that pulls it) silently lags
+        # the latest backend. GITHUB_TOKEN can't reach another repo; supply
+        # a PAT with actions:write on ErykKul/dataverse-mount as the
+        # MOUNT_DISPATCH_TOKEN secret. If unset, this warns and skips, and
+        # the image stays stale until the next manual rebuild.
+        env:
+          GH_TOKEN: ${{ secrets.MOUNT_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::warning::MOUNT_DISPATCH_TOKEN not set; the dataverse-mount image will not auto-rebuild. Create a PAT with actions:write on ErykKul/dataverse-mount and add it as the MOUNT_DISPATCH_TOKEN repository secret."
+            exit 0
+          fi
+          gh workflow run build.yml --repo ErykKul/dataverse-mount --ref main \
+            && echo "Triggered dataverse-mount image rebuild." \
+            || echo "::warning::failed to trigger dataverse-mount rebuild (token scope?)"
