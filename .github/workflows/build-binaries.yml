@@ -32,11 +32,9 @@ jobs:
             goos: linux
             goarch: arm64
             ext: ""
-          - os: macos-13
-            target: darwin-amd64
-            goos: darwin
-            goarch: amd64
-            ext: ""
+          # darwin-amd64 (Intel Mac) intentionally omitted: the macos-13
+          # runner queue is unpredictable (often hours), and Apple Silicon
+          # dominates Mac usage. Intel-Mac users can build from source.
           - os: macos-latest
             target: darwin-arm64
             goos: darwin
@@ -102,9 +100,10 @@ jobs:
             | --- | --- |
             | `rclone-linux-amd64` | Linux x86_64 |
             | `rclone-linux-arm64` | Linux ARM64 |
-            | `rclone-darwin-amd64` | macOS Intel |
             | `rclone-darwin-arm64` | macOS Apple Silicon |
             | `rclone-windows-amd64.exe` | Windows x86_64 |
+
+            Intel-Mac binary is not built (the `macos-13` runner queue is too unpredictable for a rolling release). Intel-Mac users: `go build` from this branch — needs Go 1.25+.
 
             **FUSE driver prerequisites for `rclone mount`:**
 
