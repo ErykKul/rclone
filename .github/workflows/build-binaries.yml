@@ -92,7 +92,7 @@ jobs:
           name: "Dataverse backend — latest build"
           prerelease: true
           body: |
-            Pre-built rclone binaries from this fork's `dataverse-backend` branch. Includes the experimental Dataverse backend pending upstream merge of [rclone/rclone#9467](https://github.com/rclone/rclone/pull/9467); once that lands, the standard upstream `rclone` packages will include this backend and these binaries become unnecessary.
+            Pre-built rclone binaries from this fork's `dataverse-backend` branch. Includes experimental Dataverse support — folded into the standard `doi` backend as a "direct mode" — pending upstream merge of [rclone/rclone#9467](https://github.com/rclone/rclone/pull/9467); once that lands, the standard upstream `rclone` packages will include it and these binaries become unnecessary.
 
             **Platforms:**
 
@@ -115,14 +115,14 @@ jobs:
 
             ```bash
             chmod +x rclone-darwin-arm64
-            ./rclone-darwin-arm64 config create dv dataverse \
+            ./rclone-darwin-arm64 config create dv doi \
                 host=https://demo.dataverse.org \
                 dataset_pid=doi:10.70122/FK2/PPIAXE
             mkdir -p ~/dv-mount
             ./rclone-darwin-arm64 mount --read-only dv: ~/dv-mount
             ```
 
-            Full backend documentation: [backend/dataverse/README.md](https://github.com/ErykKul/rclone/blob/dataverse-backend/backend/dataverse/README.md). Recipe wrapping this backend with Docker + Globus: [gdcc/dataverse-recipes#35](https://github.com/gdcc/dataverse-recipes/pull/35).
+            Full backend documentation: [the doi backend docs](https://github.com/ErykKul/rclone/blob/dataverse-backend/docs/content/doi.md). Recipe wrapping this backend with Docker + Globus: [gdcc/dataverse-recipes#35](https://github.com/gdcc/dataverse-recipes/pull/35).
           files: artifacts/*
 
       - name: Rebuild the dataverse-mount Docker image
